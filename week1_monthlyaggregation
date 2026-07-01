@@ -1,0 +1,67 @@
+import pandas as pd
+import glob
+import os
+
+# Folder containing all CSV files
+csv_folder = "/Users/clair/OneDrive/IDX Internship/IDX-Internship/csv files"
+
+# -------------------------
+# SOLD DATA
+# -------------------------
+
+sold_files = glob.glob(os.path.join(csv_folder, "CRMLSSold*.csv"))
+
+sold_data = []
+
+for file in sold_files:
+    df = pd.read_csv(file)
+    sold_data.append(df)
+
+print("Rows before combining sold files:", sum(len(df) for df in sold_data))
+
+sold = pd.concat(sold_data, ignore_index=True)
+
+print("Rows after combining sold files:", len(sold))
+
+print("Rows before Residential filter:", len(sold))
+
+sold = sold[sold["PropertyType"] == "Residential"]
+
+print("Rows after Residential filter:", len(sold))
+
+sold.to_csv(
+    os.path.join(csv_folder, "combined_sold_residential.csv"),
+    index=False
+)
+
+# -------------------------
+# LISTING DATA
+# -------------------------
+
+listing_files = glob.glob(os.path.join(csv_folder, "CRMLSListing*.csv"))
+
+listing_data = []
+
+for file in listing_files:
+    df = pd.read_csv(file)
+    listing_data.append(df)
+
+print("\nRows before combining listing files:",
+      sum(len(df) for df in listing_data))
+
+listings = pd.concat(listing_data, ignore_index=True)
+
+print("Rows after combining listing files:", len(listings))
+
+print("Rows before Residential filter:", len(listings))
+
+listings = listings[listings["PropertyType"] == "Residential"]
+
+print("Rows after Residential filter:", len(listings))
+
+listings.to_csv(
+    os.path.join(csv_folder, "combined_listings_residential.csv"),
+    index=False
+)
+
+print("\nWeek 1 Monthly AggregationDone")
