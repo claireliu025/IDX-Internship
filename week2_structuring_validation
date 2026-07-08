@@ -1,0 +1,187 @@
+import pandas as pd
+import os
+import matplotlib.pyplot as plt
+
+# File Path
+csv_fold = r"C:\Users\clair\OneDrive\IDX Internship\IDX-Internship\csv folder"
+
+# Load datasets
+
+sold = pd.read_csv(os.path.join(csv_fold, "combined_sold_residential.csv"),
+    encoding="latin-1", low_memory=False)
+
+listings = pd.read_csv(os.path.join(csv_fold, "combined_listings_residential.csv"),
+encoding="latin-1", low_memory=False)
+
+# -------------------------
+# DATASET UNDERSTANDING
+# -------------------------
+
+print("\n--- Dataset Shape ---")
+print("Rows:", sold.shape[0])
+print("Columns:", sold.shape[1])
+
+
+print("\n--- Column Names ---")
+print(sold.columns)
+
+
+print("\n--- First 5 Rows ---")
+print(sold.head())
+
+
+print("\n--- Data Types ---")
+print(sold.dtypes)
+
+# -------------------------
+# PROPERTY TYPE CHECK
+# -------------------------
+
+print("\n--- Unique Property Types ---")
+print(sold["PropertyType"].unique())
+
+# -------------------------
+# MISSING VALUE ANALYSIS
+# -------------------------
+
+missing_report = pd.DataFrame({
+    "Missing Count": sold.isnull().sum(),
+    "Missing Percentage": (sold.isnull().sum() / len(sold)) * 100
+})
+
+
+missing_report = missing_report.sort_values(
+    by="Missing Percentage",
+    ascending=False
+)
+
+
+print("\n--- Missing Value Report ---")
+print(missing_report)
+
+# Columns with >90% missing values
+
+high_missing = missing_report[
+    missing_report["Missing Percentage"] > 90
+]
+
+
+print("\n--- Columns Above 90% Missing ---")
+print(high_missing)
+
+# Save missing value report
+
+missing_report.to_csv(
+    os.path.join(csv_fold, "missing_value_report.csv")
+)
+
+# -------------------------
+# NUMERIC DISTRIBUTION SUMMARY
+# -------------------------
+
+numeric_fields = [
+    "ClosePrice",
+    "ListPrice",
+    "OriginalListPrice",
+    "LivingArea",
+    "LotSizeAcres",
+    "BedroomsTotal",
+    "BathroomsTotalInteger",
+    "DaysOnMarket",
+    "YearBuilt"
+]
+
+
+print("\n--- Numeric Summary ---")
+
+numeric_summary = sold[numeric_fields].describe(
+    percentiles=[0.01, 0.05, 0.25, 0.5, 0.75, 0.95, 0.99]
+).T
+
+print(numeric_summary)
+
+numeric_summary.to_csv(
+    os.path.join(csv_fold, "numeric_distribution_summary.csv")
+)
+
+# -------------------------
+# HISTOGRAMS AND BOXPLOTS
+# -------------------------
+
+plot_fields = ["ClosePrice", "ListPrice", "OriginalListPrice", "LivingArea", "LotSizeAcres", "BedroomsTotal",
+"BathroomsTotalInteger", "DaysOnMarket", "YearBuilt"]
+
+for field in plot_fields:
+
+    if field in sold.columns:
+
+        # Histogram
+        plt.figure(figsize=(8,5))
+        sold[field].dropna().hist(bins=35)
+        plt.title(f"{field} Distribution")
+        plt.xlabel(field)
+        plt.ylabel("Frequency")
+        plt.show()
+        
+        # Boxplot
+        plt.figure(figsize=(8,5))
+        sold.boxplot(column=field)
+        plt.title(f"{field} Boxplot")
+        plt.show()
+
+
+# -------------------------
+# SUGGESTED INTERN QUESTIONS
+# -------------------------
+
+# Median and average close price
+
+print("\n--- Close Price Statistics ---")
+
+print("Average Close Price:",
+      sold["ClosePrice"].mean())
+
+print("Median Close Price:",
+      sold["ClosePrice"].median())
+
+# Days on Market distribution
+
+print("\n--- Days on Market Summary ---")
+
+print( sold["DaysOnMarket"].describe())
+
+# Homes sold above vs below list price
+
+sold["PriceComparison"] = (
+    sold["ClosePrice"] > sold["ListPrice"])
+
+print("\n--- Sold Above List Price Percentage ---")
+
+above_list = sold["PriceComparison"].mean() * 100
+
+print(f"{above_list:.2f}% sold above list price")
+
+# Counties with highest median prices
+
+print("\n--- County Median Prices ---")
+
+county_prices = (
+    sold.groupby("CountyOrParish")["ClosePrice"]
+    .median()
+    .sort_values(ascending=False))
+
+print(county_prices.head(10))
+
+# -------------------------
+# SAVE FINAL CLEAN DATASET
+# -------------------------
+
+sold.to_csv(
+    os.path.join(csv_fold, "final_residential_sold_eda.csv"),
+    index=False
+)
+
+
+
+
+
