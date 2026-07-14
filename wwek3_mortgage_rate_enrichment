@@ -1,0 +1,141 @@
+import pandas as pd
+import os
+
+# -------------------------
+# FILE PATH
+# -------------------------
+
+csv_fold = r"C:\Users\clair\OneDrive\IDX Internship\IDX-Internship\csv folder"
+
+# -------------------------
+# LOAD DATASETS
+# -------------------------
+
+sold = pd.read_csv(
+    os.path.join(csv_fold, "combined_sold_residential.csv"),
+    encoding="latin-1",
+    low_memory=False
+)
+
+listings = pd.read_csv(
+    os.path.join(csv_fold, "combined_listings_residential.csv"),
+    encoding="latin-1",
+    low_memory=False
+)
+
+# -------------------------
+# STEP 1: FETCH FRED MORTGAGE DATA
+# -------------------------
+
+url = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=MORTGAGE30US"
+mortgage = pd.read_csv(url)
+
+mortgage = pd.read_csv(url, parse_dates=['observation_date'])
+
+# Rename columns
+mortgage.columns = ["date", "rate_30yr_fixed"]
+
+print(mortgage.head())
+
+
+# -------------------------
+# STEP 2: CONVERT WEEKLY DATA TO MONTHLY AVERAGE
+# -------------------------
+
+mortgage["year_month"] = mortgage["date"].dt.to_period("M")
+
+mortgage_monthly = (mortgage.groupby("year_month")["rate_30yr_fixed"]
+    .mean()
+    .reset_index()
+)
+
+print(mortgage_monthly.head())
+
+
+# -------------------------
+# STEP 3: CREATE YEAR-MONTH KEY
+# -------------------------
+
+sold["CloseDate"] = pd.to_datetime(
+    sold["CloseDate"],
+    errors="coerce"
+)
+
+sold["year_month"] = sold["CloseDate"].dt.to_period("M")
+
+
+listings["ListingContractDate"] = pd.to_datetime(
+    listings["ListingContractDate"],
+    errors="coerce"
+)
+
+listings["year_month"] = (listings["ListingContractDate"].dt.to_period("M"))
+
+# -------------------------
+# STEP 4: MERGE MORTGAGE RATES
+# -------------------------
+
+sold_with_rates = sold.merge(
+    mortgage_monthly,
+    on="year_month",
+    how="left"
+)
+
+listings_with_rates = listings.merge(
+    mortgage_monthly,
+    on="year_month",
+    how="left"
+)
+
+# -------------------------
+# STEP 5: VALIDATE MERGE
+# One listing record lacked ListingContractDate, giving 1 Missing Mortagage Rate (Listings)
+# Removed unmatched records after validation
+# -------------------------
+sold_with_rates =sold_with_rates .dropna(
+    subset=["rate_30yr_fixed"])
+
+print("\nMissing mortgage rates (Sold):")
+print(sold_with_rates["rate_30yr_fixed"].isnull().sum())
+
+
+listings_with_rates = listings_with_rates.dropna(
+    subset=["rate_30yr_fixed"])
+
+print("\nMissing mortgage rates (Listings):")
+print(listings_with_rates["rate_30yr_fixed"].isnull().sum())
+
+# -------------------------
+# PREVIEW
+# -------------------------
+
+print("\nSold Preview")
+
+print(
+    sold_with_rates[["CloseDate","year_month","ClosePrice","rate_30yr_fixed"]
+    ].head()
+)
+
+print("\nListings Preview")
+
+print(
+    listings_with_rates[["ListingContractDate","year_month","ListPrice","rate_30yr_fixed"]
+    ].head()
+)
+
+# -------------------------
+# SAVE ENRICHED DATASETS
+# -------------------------
+
+sold_with_rates.to_csv(
+    os.path.join(csv_fold, "combined_sold_residential_with_rates.csv"),
+    index=False
+)
+
+listings_with_rates.to_csv(
+    os.path.join(csv_fold, "combined_listings_residential_with_rates.csv"),
+    index=False
+)
+
+print("\nMortgage Rate Enrichment Merge Complete")
+
